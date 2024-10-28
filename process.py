@@ -1,6 +1,7 @@
 import csv
 import os
 import re
+from sanitize import sanitize
 
 
 def find_nth(haystack: str, needle: str, n: int) -> int:
@@ -75,6 +76,12 @@ def sanitizeItems():
 
 
 def main():
+    for file in os.listdir('data'):
+        print(f'\tSanitizing {file}...')
+        if 'result' in file.lower():
+            sanitize(lambda x: ''.join(re.sub(r' †', '', x)), f'data/{file}')
+        elif 'item' in file.lower():
+            sanitize(lambda x: x[x.find('Item #'):], f'data/{file}')
     # Sanitize Item data
     items, cat_count = sanitizeItems()
 
