@@ -49,8 +49,9 @@ def sanitizeItems():
 
             for category in categories:
                 # Find highest bloom level
-                if 'Bloom' in category and category > bloom:
-                    bloom = category
+                if 'Bloom' in category:
+                    if category > bloom:
+                        bloom = category
                 # Find the subcategory
                 elif len(category) > len(subcategory):
                     subcategory = category
@@ -59,6 +60,9 @@ def sanitizeItems():
             # Reformat category as "Bloom Level, Category/Subcategory"
             if subcategory != '' and bloom != '':
                 short_bloom = bloom[re.search(r'.loom..evel', bloom).start():]
+                bloom_parts = short_bloom.split(' - ')
+                bloom_parts[1] = re.sub(' ', '', bloom_parts[1])
+                short_bloom = ' - '.join(bloom_parts)
                 print(item['ItemID'], '\t', short_bloom)
                 short_cat = subcategory[find_nth(subcategory, '/', 2) + 1:]
                 cat = ', '.join([short_bloom.title(), short_cat])
