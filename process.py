@@ -51,8 +51,9 @@ def sanitizeItems():
             for category in categories:
                 # Find highest bloom level
                 if 'Bloom' in category:
-                    if category > bloom:
-                        bloom = category
+                    clean_cat = category.title()
+                    if clean_cat > bloom:
+                        bloom = clean_cat
                 # Find the subcategory
                 elif len(category) > len(subcategory):
                     subcategory = category
