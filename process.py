@@ -21,14 +21,19 @@ def getFilename(name: str) -> str:
 
 def sanitizeIDs(ids):
     """
-    Sanitize the data from the ID file. Sanitization if file specific and
+    Sanitize the data from the ID file. Sanitization is file specific and
     likely needs to be refactored later for more general use
     """
     id_set = {}
     for id in ids:
-        if 'Q' in id and len(id) < 6:
-            id_set[id] = ids[id].split('/')[0].strip()
-    return id_set
+        if id['UNI (ID)'] == 'Item ID / Rev':
+            i = 1
+            key = 'Q1'
+            while id.get(key):
+                id_set[key] = id[key].split('/')[0].strip()
+                i += 1
+                key = f'Q{i}'
+            return id_set
 
 
 def sanitizeItems():
@@ -77,21 +82,22 @@ def sanitizeItems():
 
 
 def main():
-    for file in os.listdir('data'):
-        print(f'\tSanitizing {file}...')
+    for file in [x for x in os.listdir('data') if x[-4:] == '.csv']:
+        print(f' -- Sanitizing {file}...')
         if 'result' in file.lower():
             sanitize(lambda x: ''.join(re.sub(r' †', '', x)), f'data/{file}')
         elif 'item' in file.lower():
             sanitize(lambda x: x[x.find('Item #'):], f'data/{file}')
     # Sanitize Item data
     items, cat_count = sanitizeItems()
+    print('Number of Questions:', len(items))
+    print('Category Count:', len(cat_count))
 
     # Open the results file and return the DictReader
     with open(f'data/{getFilename("results")}', 'r',
               encoding='utf-8-sig') as file:
         results = csv.DictReader(file)
-        item_dir = next(results)
-        item_dir = sanitizeIDs(item_dir)
+        item_dir = sanitizeIDs(results)
 
         # Process the results into a new CSV
         with open('results/processed.csv', 'w') as file:
@@ -103,33 +109,35 @@ def main():
 
             # Accumulate the data for each student
             for row in results:
-                i = 1
-                out_data = {}
-                categories = {}
-                qnum = 'Q1'
+                if row['UNI (ID)']:
+                    out_data = {}
+                    categories = {}
 
-                # Iterate through the questions to get the category scores
-                while row.get(qnum):
-                    category = items[item_dir[qnum]]
-                    if category not in categories:
-                        categories[category] = 0
-                    try:
-                        categories[category] += int(row[f'{qnum} Pts'])
-                    except ValueError:
-                        pass
-                    i += 1
-                    qnum = f'Q{i}'
+                    # Iterate through the questions to get the category scores
+                    for key in item_dir:
+                        category = items[item_dir[key]]
+                        if category not in categories:
+                            categories[category] = 0
+                        try:
+                            categories[category] += int(row[f'{key} Pts'])
+                        except ValueError:
+                            pass
 
-                # Write the row to the file
-                for category in categories:
-                    out_data['UNI (ID)'] = row['UNI (ID)']
-                    out_data['Category'] = category
-                    out_data['Max Score'] = cat_count[category]
-                    out_data['Student Score'] = categories[category]
-                    percentage = int(
-                        categories[category] / cat_count[category] * 100)
-                    out_data['% Correct'] = f'{percentage}%'
-                    writer.writerow(out_data)
+                    # Check for consistent category length
+                    if len(cat_count) != len(categories):
+                        print('Inconsistent category length for (',
+                              row['UNI (ID)'], ')')
+
+                    # Write the row to the file
+                    for category in categories:
+                        out_data['UNI (ID)'] = row['UNI (ID)']
+                        out_data['Category'] = category
+                        out_data['Max Score'] = cat_count[category]
+                        out_data['Student Score'] = categories[category]
+                        percentage = int(
+                            categories[category] / cat_count[category] * 100)
+                        out_data['% Correct'] = f'{percentage}%'
+                        writer.writerow(out_data)
 
 
 if __name__ == '__main__':
