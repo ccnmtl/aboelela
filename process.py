@@ -1,7 +1,6 @@
 import csv
 import os
 import re
-from sanitize import sanitize
 
 
 def find_nth(haystack: str, needle: str, n: int) -> int:
@@ -10,6 +9,17 @@ def find_nth(haystack: str, needle: str, n: int) -> int:
         start = haystack.find(needle, start+len(needle))
         n -= 1
     return start
+
+
+def sanitize(func, filename):
+    """
+    Modify a file with the the function provided.
+    """
+    body = None
+    with open(filename, 'r', encoding='utf-8') as file:
+        body = file.read()
+    with open(filename, 'w', encoding='utf-8') as file:
+        file.write(func(body))
 
 
 def getFilename(name: str) -> str:
@@ -26,7 +36,7 @@ def sanitizeIDs(ids):
     """
     id_set = {}
     for id in ids:
-        if id['UNI (ID)'] == 'Item ID / Rev':
+        if id.get('UNI (ID)') and id['UNI (ID)'] == 'Item ID / Rev':
             i = 1
             key = 'Q1'
             while id.get(key):
@@ -42,26 +52,27 @@ def sanitizeItems():
     likely needs to be refactored later for more general use.
     """
     with open(f'data/{getFilename("item")}', 'r',
-              encoding='utf-8-sig') as file:
+              encoding='utf-8') as file:
         items = csv.DictReader(file)
         clean = {}
         count = {}
 
         for item in items:
-            # Clean up the categories
-            categories = [x.strip() for x in item['Categories'].split(',')]
-            bloom = ''
-            subcategory = ''
+            if item['Item #']:
+                # Clean up the categories
+                categories = [x.strip() for x in item['Categories'].split(',')]
+                bloom = ''
+                subcategory = ''
 
-            for category in categories:
-                # Find highest bloom level
-                if 'Bloom' in category:
-                    clean_cat = category.title()
-                    if clean_cat > bloom:
-                        bloom = clean_cat
-                # Find the subcategory
-                elif len(category) > len(subcategory):
-                    subcategory = category
+                for category in categories:
+                    # Find highest bloom level
+                    if 'Bloom' in category:
+                        clean_cat = category.title()
+                        if clean_cat > bloom:
+                            bloom = clean_cat
+                    # Find the subcategory
+                    elif len(category) > len(subcategory):
+                        subcategory = category
 
             # Drop unnecessary columns
             # Reformat category as "Bloom Level, Category/Subcategory"
@@ -84,8 +95,10 @@ def sanitizeItems():
 def main():
     for file in [x for x in os.listdir('data') if x[-4:] == '.csv']:
         print(f' -- Sanitizing {file}...')
+        sanitize(lambda x: re.sub(r'⁄', '/', x), f'data/{file}')
         if 'result' in file.lower():
-            sanitize(lambda x: ''.join(re.sub(r' †', '', x)), f'data/{file}')
+            sanitize(lambda x: ''.join(
+                re.sub(r' ?[^\w\s\(\),/\-<>\*\?%]', '', x)), f'data/{file}')
         elif 'item' in file.lower():
             sanitize(lambda x: x[x.find('Item #'):], f'data/{file}')
     # Sanitize Item data
@@ -95,9 +108,11 @@ def main():
 
     # Open the results file and return the DictReader
     with open(f'data/{getFilename("results")}', 'r',
-              encoding='utf-8-sig') as file:
+              encoding='utf-8') as file:
         results = csv.DictReader(file)
         item_dir = sanitizeIDs(results)
+        print(item_dir)
+        print('Item Directory Size:', len(item_dir))
 
         # Process the results into a new CSV
         with open('results/processed.csv', 'w') as file:
@@ -126,7 +141,7 @@ def main():
                     # Check for consistent category length
                     if len(cat_count) != len(categories):
                         print('Inconsistent category length for (',
-                              row['UNI (ID)'], ')')
+                              row['UNI (ID)'], '\t', len(categories), ')')
 
                     # Write the row to the file
                     for category in categories:
