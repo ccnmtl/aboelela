@@ -53,42 +53,49 @@ def sanitizeItems():
     """
     with open(f'data/{getFilename("item")}', 'r',
               encoding='utf-8') as file:
-        items = csv.DictReader(file)
+        tables = [
+            'Item #' + x for x in file.read().split('Item #') if len(x) > 0]
+        print('Tables Found:', len(tables))
         clean = {}
         count = {}
 
-        for item in items:
-            if item['Item #']:
-                # Clean up the categories
-                categories = [x.strip() for x in item['Categories'].split(',')]
-                bloom = ''
-                subcategory = ''
+        for table in tables:
+            items = csv.DictReader(table.splitlines())
+            for item in items:
+                if item['Item #'].isnumeric():
+                    print('Item #', item['Item #'])
+                    # Clean up the categories
+                    categories = [
+                        x.strip() for x in item['Categories'].split(',')]
+                    bloom = ''
+                    subcategory = ''
 
-                for category in categories:
-                    # Find highest bloom level
-                    if 'Bloom' in category:
-                        clean_cat = category.title()
-                        if clean_cat > bloom:
-                            bloom = clean_cat
-                    # Find the subcategory
-                    elif len(category) > len(subcategory):
-                        subcategory = category
+                    for category in categories:
+                        # Find highest bloom level
+                        if 'Bloom' in category:
+                            clean_cat = category.title()
+                            if clean_cat > bloom:
+                                bloom = clean_cat
+                        # Find the subcategory
+                        elif len(category) > len(subcategory):
+                            subcategory = category
 
-            # Drop unnecessary columns
-            # Reformat category as "Bloom Level, Category/Subcategory"
-            if subcategory != '' and bloom != '':
-                short_bloom = bloom[re.search(r'.loom..evel', bloom).start():]
-                bloom_parts = short_bloom.split(' - ')
-                bloom_parts[1] = re.sub(' ', '', bloom_parts[1])
-                short_bloom = ' - '.join(bloom_parts)
-                print(item['ItemID'], '\t', short_bloom)
-                short_cat = subcategory[find_nth(subcategory, '/', 2) + 1:]
-                cat = ', '.join([short_bloom.title(), short_cat])
-                clean[item['ItemID']] = cat
-                if cat not in count:
-                    count[cat] = 2
-                else:
-                    count[cat] += 2
+                # Drop unnecessary columns
+                # Reformat category as "Bloom Level, Category/Subcategory"
+                if subcategory != '' and bloom != '':
+                    short_bloom = bloom[
+                        re.search(r'.loom..evel', bloom).start():]
+                    bloom_parts = short_bloom.split(' - ')
+                    bloom_parts[1] = re.sub(' ', '', bloom_parts[1])
+                    short_bloom = ' - '.join(bloom_parts)
+                    print(item['ItemID'], '\t', short_bloom)
+                    short_cat = subcategory[find_nth(subcategory, '/', 2) + 1:]
+                    cat = ', '.join([short_bloom.title(), short_cat])
+                    clean[item['ItemID']] = cat
+                    if cat not in count:
+                        count[cat] = 2
+                    else:
+                        count[cat] += 2
         return clean, count
 
 
