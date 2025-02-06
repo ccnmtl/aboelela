@@ -84,7 +84,7 @@ def sanitizeItems():
                 # Reformat category as "Bloom Level, Category/Subcategory"
                 if subcategory != '' and bloom != '':
                     short_bloom = bloom[
-                        re.search(r'.loom..evel', bloom).start():]
+                        re.search(r'.loom.{1,3}evel', bloom).start():]
                     bloom_parts = short_bloom.split(' - ')
                     bloom_parts[1] = re.sub(' ', '', bloom_parts[1])
                     short_bloom = ' - '.join(bloom_parts)
